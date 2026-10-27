@@ -75,7 +75,7 @@ try {
     }
 
     # Copy only the website. Proposals, source archives, logs, credentials and Sites identity are excluded.
-    foreach ($DirectoryName in @('src','dist','worker','supabase','scripts','tests')) {
+    foreach ($DirectoryName in @('src','dist','worker','supabase','scripts','tests','.github')) {
         Copy-Item -LiteralPath (Join-Path $ProjectRoot $DirectoryName) -Destination $StagePath -Recurse -Force
     }
     foreach ($FileName in @('package.json','build.mjs','server.mjs','README.md','wrangler.jsonc','Start Demo.cmd','Publish-GitHub.ps1','.gitignore')) {
@@ -101,25 +101,26 @@ try {
 
     $PagesJson = & gh api "repos/$FullName/pages" 2>$null
     $PagesExists = $LASTEXITCODE -eq 0
-    $Settings = @{ build_type = 'legacy'; source = @{ branch = 'main'; path = '/docs' } } | ConvertTo-Json -Compress
+    $Settings = @{ build_type = 'workflow' } | ConvertTo-Json -Compress
     $Method = if ($PagesExists) { 'PUT' } else { 'POST' }
     $ResponseJson = $Settings | & gh api --method $Method "repos/$FullName/pages" --input -
-    if ($LASTEXITCODE -ne 0) { throw 'Source was pushed, but Pages configuration failed. Check repository Settings > Pages and select main /docs.' }
+    if ($LASTEXITCODE -ne 0) { throw 'Source was pushed, but Pages configuration failed. Check repository Settings > Pages and select GitHub Actions.' }
     $PagesInfo = $ResponseJson | ConvertFrom-Json
     if (-not $PagesInfo.html_url) { $PagesInfo = (& gh api "repos/$FullName/pages") | ConvertFrom-Json }
     $LiveUrl = $PagesInfo.html_url
     Write-Host "Repository: https://github.com/$FullName"
     Write-Host "Pages URL: $LiveUrl"
-    if ($NoWait) { Write-Host 'Publication requested. The Pages build is not verified yet.'; return }
+    Invoke-Checked 'gh' @('workflow','run','pages.yml','--repo',$FullName,'--ref','main')
+    if ($NoWait) { Write-Host 'The Pages deployment workflow was requested. The deployment is not verified yet.'; return }
     for ($Attempt = 0; $Attempt -lt 30; $Attempt++) {
-        $BuildJson = & gh api "repos/$FullName/pages/builds/latest" 2>$null
+        $BuildJson = & gh api "repos/$FullName/actions/workflows/pages.yml/runs?head_sha=$Commit&per_page=1" 2>$null
         if ($LASTEXITCODE -eq 0) {
-            $BuildInfo = $BuildJson | ConvertFrom-Json
-            if ($BuildInfo.status -eq 'built' -and $BuildInfo.commit -eq $Commit) {
+            $BuildInfo = ($BuildJson | ConvertFrom-Json).workflow_runs | Select-Object -First 1
+            if ($BuildInfo.conclusion -eq 'success' -and $BuildInfo.head_sha -eq $Commit) {
                 $Response = Invoke-WebRequest -Uri $LiveUrl -UseBasicParsing -TimeoutSec 20
                 if ($Response.StatusCode -eq 200) { Write-Host "Verified live: $LiveUrl"; return }
             }
-            if ($BuildInfo.status -eq 'errored' -and $BuildInfo.commit -eq $Commit) { throw 'GitHub Pages reported a failed build. Review the Pages workflow logs.' }
+            if ($BuildInfo.conclusion -in @('failure','cancelled','timed_out') -and $BuildInfo.head_sha -eq $Commit) { throw 'The Pages deployment workflow did not complete successfully. Review its GitHub Actions logs.' }
         }
         Start-Sleep -Seconds 6
     }

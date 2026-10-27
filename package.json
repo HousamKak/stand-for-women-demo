@@ -1,0 +1,11 @@
+{
+  "name": "stand-for-women",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "build": "node build.mjs",
+    "check": "node --check src/app.js && node --check worker/index.js && node --check server.mjs"
+  }
+}

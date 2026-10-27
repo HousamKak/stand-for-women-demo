@@ -23,11 +23,11 @@ Run from your own PowerShell window, which must have internet access and GitHub 
 .\Publish-GitHub.ps1
 ```
 
-The script creates the public `HousamKak/stand-for-women-demo` repository, pushes the website and a rebased `/docs` build, enables Pages on `main /docs`, and waits for the matching build to return HTTP 200. It refuses to overwrite an unrelated repository, does not force-push, and uses a separate `.github-publish` checkout. Tokens remain in GitHub CLI's credential store. The local sales site can continue running during publication.
+The script creates the public `HousamKak/stand-for-women-demo` repository, pushes the website and a rebased `/docs` build, configures Pages to deploy through GitHub Actions, and waits for a successful deployment and HTTP 200. It refuses to overwrite an unrelated repository, does not force-push, and uses a separate `.github-publish` checkout. Tokens remain in GitHub CLI's credential store. The local sales site can continue running during publication.
 
 If GitHub CLI needs authentication, run `gh auth login` first. `-PrepareOnly` creates the Pages-compatible files without accessing GitHub. `-RepositoryName` selects a different new repository; the publisher remembers its target in `.github-publish-state.json` for safe retries. `-NoWait` stops after requesting publication and does not claim the deployment is verified.
 
-The build has been tested under the GitHub project prefix, with all 34 public routes, media, reports and the dashboard. Generated Pages output is `pages-dist/`; a scoped `404.html` preserves client navigation, and `.nojekyll` bypasses Jekyll. Demo pages discourage search indexing. External publication is not yet verified: the connected GitHub app cannot create repositories or configure Pages, and direct terminal connections to GitHub are blocked in the agent environment.
+The build has been tested under the GitHub project prefix, with all 34 public routes, media, reports and the dashboard. Generated Pages output is `pages-dist/`; a scoped `404.html` preserves client navigation, and `.nojekyll` bypasses Jekyll. Demo pages discourage search indexing. The repository is now populated at https://github.com/HousamKak/stand-for-women-demo. The GitHub Actions workflow publishes `docs/` on pushes to `main` and supports manual runs. A final workflow step verifies the live routes and core assets. Pages must be configured with GitHub Actions as its source.
 
 The shipped configuration is a local demonstration. Dashboard changes are saved in browser localStorage, are limited to that browser, and do not affect the existing website. Clear the `sfw-content-v1` localStorage key to restore the original demo content. There is no fake login or pretend server persistence. Without a configured Worker, the contact form opens the visitor's email app rather than claiming to send a message.
 
@@ -79,6 +79,6 @@ Production integration work still requiring real accounts: live authentication a
 
 Desktop/mobile browser checks exercise all 34 public routes, project/partner search, report downloads, the gallery and local draft/publish/delete behavior. Worker tests cover denied anonymous and non-admin access, private-object protection, preview signature rejection, CORS and inquiry validation. See `qa/results.json` for the latest run; screenshots are generated locally.
 
-A private Sites preview was registered as `appgprj_6ae0796d05d08191ba3893a4c946d91a`, retained in `.openai/hosting.json`. Uploading its source failed because this execution environment blocks the Git endpoint. It is **not deployed**. Reuse the existing project if publication resumes; do not create a duplicate. The final intended production hosting remains the client's Cloudflare account.
+The sales demo is deployed through GitHub Actions to https://housamkak.github.io/stand-for-women-demo/. The initial deployment succeeded in run 40497873315. Production Supabase/R2 integration remains deferred at the user's request. The final production hosting can use the client's Cloudflare account after approval.
 
 Provider references: [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [R2 Workers API](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/), [Workers rate limits](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/).
